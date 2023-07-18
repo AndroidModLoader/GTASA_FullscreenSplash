@@ -1,41 +1,21 @@
 #include <mod/amlmod.h>
-#include <dlfcn.h>
 
-MYMOD(net.rusjj.fullsplash, GTA:SA Fullscreen Splashes, 1.0, RusJJ)
+MYMOD(net.rusjj.fullsplash, GTA:SA Fullscreen Splashes, 1.1, RusJJ)
 
-void Redirect(uintptr_t addr, uintptr_t to)
-{
-    if(!addr) return;
-    if(addr & 1)
-    {
-        addr &= ~1;
-        if (addr & 2)
-        {
-            aml->PlaceNOP(addr, 1);
-            addr += 2;
-        }
-        uint32_t hook[2];
-        hook[0] = 0xF000F8DF;
-        hook[1] = to;
-        aml->Write(addr, (uintptr_t)hook, sizeof(hook));
-    }
-    else
-    {
-        uint32_t hook[2];
-        hook[0] = 0xE51FF004;
-        hook[1] = to;
-        aml->Write(addr, (uintptr_t)hook, sizeof(hook));
-    }
-}
+#ifdef AML32
+    #define BYVER(__for32, __for64) (__for32)
+#else
+    #define BYVER(__for32, __for64) (__for64)
+#endif
 
 extern "C" void OnModLoad()
 {
     uintptr_t pGTASA = aml->GetLib("libGTASA.so");
     if(pGTASA == 0) return;
 
-    aml->Write(pGTASA + 0x43B07B, (uintptr_t)"\xD0", 1); // BEQ
-    aml->Write(pGTASA + 0x43B0C6, (uintptr_t)"\xB6\xEE\x06\x0A", 4); // On BEQ
-    aml->Write(pGTASA + 0x43B07C, (uintptr_t)"\xB5\xEE\x04\x0A\x00\xBF\x00\xBF\x00\xBF", 10); // Otherwise
+    aml->Write(pGTASA + BYVER(0x43B07B, 0x5204F0), (uintptr_t)BYVER("\xD0", "\x80"), 1); // BEQ
+    aml->Write(pGTASA + BYVER(0x43B0C6, 0x520540), (uintptr_t)BYVER("\xB6\xEE\x06\x0A", "\x00\x0D\x2C\x1E"), 4); // On BEQ
+    aml->Write(pGTASA + BYVER(0x43B07C, 0x5204F4), (uintptr_t)BYVER("\xB5\xEE\x04\x0A\x00\xBF\x00\xBF\x00\xBF", "\x00\x90\x2A\x1E\x1F\x20\x03\xD5"), BYVER(10, 8)); // Otherwise
 
-    Redirect(pGTASA + 0x43B024 + 0x1, pGTASA + 0x43B05A + 0x1); // Skip checks... Currently fullscreen splashes are for 4:3 screens and 16:9
+    aml->PlaceB(pGTASA + BYVER(0x43B024 + 0x1, 0x52048C), pGTASA + BYVER(0x43B05A + 0x1, 0x5204C8)); // Skip checks... Currently fullscreen splashes are for 4:3 screens and 16:9
 }
